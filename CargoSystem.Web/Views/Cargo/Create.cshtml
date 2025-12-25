@@ -1,0 +1,54 @@
+@model CargoSystem.Web.Models.CargoCreateViewModel
+
+@{
+	ViewData["Title"] = "Yeni Kargo Gönder";
+}
+
+<div class="container mt-5">
+	<div class="row justify-content-center">
+		<div class="col-md-6">
+			<div class="card shadow">
+				<div class="card-header bg-primary text-white">
+					<h3 class="card-title mb-0">Kargo Gönderim Formu</h3>
+				</div>
+				<div class="card-body">
+					<form asp-action="Create" method="post">
+
+						<div class="mb-3">
+							<label asp-for="SenderName" class="form-label"></label>
+							<input asp-for="SenderName" class="form-control" placeholder="Adınız Soyadınız" />
+							<span asp-validation-for="SenderName" class="text-danger"></span>
+						</div>
+
+						<div class="mb-3">
+							<label asp-for="StationId" class="form-label"></label>
+							<select asp-for="StationId" class="form-select"
+								asp-items="@(new SelectList(Model.Stations, "Id", "Name"))">
+								<option value="">-- İstasyon Seçiniz --</option>
+							</select>
+							<span asp-validation-for="StationId" class="text-danger"></span>
+						</div>
+
+						<div class="mb-3">
+							<label asp-for="WeightKg" class="form-label"></label>
+							<input asp-for="WeightKg" type="number" step="0.1" class="form-control"
+								placeholder="Örn: 5.5" />
+							<span asp-validation-for="WeightKg" class="text-danger"></span>
+						</div>
+
+						<div class="d-grid gap-2">
+							<button type="submit" class="btn btn-success">Kargo Oluştur</button>
+							<a asp-controller="Home" asp-action="Index" class="btn btn-secondary">İptal</a>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+@section Scripts {
+	@{
+		await Html.RenderPartialAsync("_ValidationScriptsPartial");
+	}
+}

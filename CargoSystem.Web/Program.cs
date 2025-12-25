@@ -13,6 +13,9 @@ builder.Services.AddDbContext<CargoSystemDbContext>(options =>
 
 var app = builder.Build();
 
+
+builder.Services.AddScoped<ICargoService, CargoService>();
+
 // 2. Seed Data Çalıştırma (Uygulama her başladığında verileri kontrol et)
 using (var scope = app.Services.CreateScope())
 {
