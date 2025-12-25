@@ -1,25 +1,11 @@
-using System;
-
 namespace CargoSystem.Domain.Entities
 {
-	public class Cargo : BaseEntity
+	public class Cargo
 	{
-		public int StationId { get; set; } // Hangi ilçeye gidecek
-		public Station Station { get; set; } // İlişki
+		public int Id { get; set; }
+		public int StationId { get; set; }
 
-		public string SenderName { get; set; }
-		public double WeightKg { get; set; }
-
-		public CargoStatus Status { get; set; } = CargoStatus.Pending;
-
-		public int? ShippingRouteId { get; set; } // Hangi sefer (rota) ile taşındığı
-		public ShippingRoute ShippingRoute { get; set; }
-	}
-
-	public enum CargoStatus
-	{
-		Pending,
-		Planned,
-		Delivered
+		public int Quantity { get; set; }
+		public double Weight { get; set; }
 	}
 }

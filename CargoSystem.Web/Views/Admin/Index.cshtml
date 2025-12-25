@@ -1,0 +1,33 @@
+@model ScenarioViewModel
+
+<h2>Admin – Senaryo Çalıştır</h2>
+
+<form method="post" asp-action="RunScenario">
+	<label>
+		<input type="checkbox" asp-for="AllowRentalVehicles" />
+		Kiralık Araçlara İzin Ver
+	</label>
+
+	<table>
+		<tr>
+			<th>İlçe</th>
+			<th>Kargo Adedi</th>
+			<th>Ağırlık (kg)</th>
+		</tr>
+		@for (int i = 0; i < Model.Stations.Count; i++)
+		{
+			<tr>
+				<td>@Model.Stations[i].StationName</td>
+				<td>
+					<input asp-for="Stations[i].CargoCount" />
+				</td>
+				<td>
+					<input asp-for="Stations[i].TotalWeight" />
+				</td>
+				<input type="hidden" asp-for="Stations[i].StationId" />
+			</tr>
+		}
+	</table>
+
+	<button type="submit">Senaryoyu Çalıştır</button>
+</form>

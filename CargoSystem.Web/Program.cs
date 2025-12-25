@@ -15,6 +15,7 @@ var app = builder.Build();
 
 
 builder.Services.AddScoped<ICargoService, CargoService>();
+builder.Services.AddScoped<IShippingService, ShippingService>();
 
 // 2. Seed Data Çalıştırma (Uygulama her başladığında verileri kontrol et)
 using (var scope = app.Services.CreateScope())

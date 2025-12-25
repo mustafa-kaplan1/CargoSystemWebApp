@@ -1,0 +1,28 @@
+@model ScenarioResultViewModel
+
+<h2>Senaryo Sonucu</h2>
+
+<p><b>Toplam Maliyet:</b> @Model.TotalCost</p>
+
+<div id="map" style="height:500px;"></div>
+
+<table>
+	<tr>
+		<th>Araç</th>
+		<th>Kiralık</th>
+		<th>Mesafe (km)</th>
+		<th>Maliyet</th>
+	</tr>
+	@foreach (var v in Model.Vehicles)
+	{
+		<tr>
+			<td>@v.VehicleId</td>
+			<td>@v.IsRented</td>
+			<td>@v.TotalDistance</td>
+			<td>@v.TotalCost</td>
+		</tr>
+	}
+</table>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="~/js/map.js"></script>
