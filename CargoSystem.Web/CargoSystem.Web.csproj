@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CargoSystem.Application\CargoSystem.Application.csproj" />
     <ProjectReference Include="..\CargoSystem.Infrastructure\CargoSystem.Infrastructure.csproj" />
+    <ProjectReference Include="..\CargoSystem.Domain\CargoSystem.Domain.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
