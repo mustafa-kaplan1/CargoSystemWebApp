@@ -11,6 +11,9 @@ namespace CargoSystem.Domain.Entities
 		public int CargoCount { get; set; }
 		public double TotalCargoWeight { get; set; }
 
+		// EKLEMENİZ GEREKEN KISIM: Parametresiz Constructor
+		public Station() { }
+
 		public Station(int id, string name, Location location)
 		{
 			Id = id;

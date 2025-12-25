@@ -1,4 +1,4 @@
-using CargoSystem.Infrastructure.Persistence;
+using CargoSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
