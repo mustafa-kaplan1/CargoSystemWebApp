@@ -4,6 +4,6 @@ namespace CargoSystem.Domain.Services
 {
 	public interface IDistanceProvider
 	{
-		Graph GetGraph();
+		Graph.Graph GetGraph();
 	}
 }

@@ -1,6 +1,7 @@
 namespace CargoSystem.Domain.Entities
+
 {
-	public class Route
+	public class ShippingRoute
 	{
 		public int VehicleId { get; set; }
 

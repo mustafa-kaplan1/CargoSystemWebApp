@@ -5,7 +5,7 @@ namespace CargoSystem.Domain.Services
 	public interface IRouteCostCalculator
 	{
 		void CalculateRouteCost(
-			Route route,
+			ShippingRoute route,
 			Vehicle vehicle,
 			int depotStationId
 		);

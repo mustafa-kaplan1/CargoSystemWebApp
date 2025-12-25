@@ -13,7 +13,7 @@ namespace CargoSystem.Domain.Services
 		}
 
 		public void CalculateRouteCost(
-			Route route,
+			ShippingRoute route,
 			Vehicle vehicle,
 			int depotStationId)
 		{

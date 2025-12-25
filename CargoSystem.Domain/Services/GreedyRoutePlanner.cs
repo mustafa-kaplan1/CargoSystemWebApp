@@ -12,13 +12,13 @@ namespace CargoSystem.Domain.Services
 			_pathService = pathService;
 		}
 
-		public List<Route> PlanRoutes(
+		public List<ShippingRoute> PlanRoutes(
 			List<Station> stations,
 			List<Vehicle> vehicles,
 			int depotStationId,
 			bool allowRental)
 		{
-			var routes = vehicles.Select(v => new Route { VehicleId = v.Id }).ToList();
+			var routes = vehicles.Select(v => new ShippingRoute { VehicleId = v.Id }).ToList();
 
 			var targetStations = stations
 				.Where(s => s.TotalCargoWeight > 0)
@@ -55,7 +55,7 @@ namespace CargoSystem.Domain.Services
 
 					vehicles.Add(rentedVehicle);
 
-					routes.Add(new Route
+					routes.Add(new ShippingRoute
 					{
 						VehicleId = rentedVehicle.Id,
 						Stations = new List<Station> { item.Station }
