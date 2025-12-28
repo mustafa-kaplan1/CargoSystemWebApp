@@ -2,27 +2,53 @@
 
 <h2>Senaryo Sonucu</h2>
 
-<p><b>Toplam Maliyet:</b> @Model.TotalCost</p>
+<div class="alert alert-info">
+	<h4>Toplam Sistem Maliyeti: @Model.TotalCost.ToString("C2")</h4>
+</div>
 
-<div id="map" style="height:500px;"></div>
+<div id="map" style="height: 600px; width: 100%; margin-bottom: 20px; border: 1px solid #ccc;"></div>
 
-<table>
-	<tr>
-		<th>Araç</th>
-		<th>Kiralık</th>
-		<th>Mesafe (km)</th>
-		<th>Maliyet</th>
-	</tr>
-	@foreach (var v in Model.Vehicles)
-	{
+<table class="table table-bordered table-striped">
+	<thead class="table-dark">
 		<tr>
-			<td>@v.VehicleId</td>
-			<td>@v.IsRented</td>
-			<td>@v.TotalDistance</td>
-			<td>@v.TotalCost</td>
+			<th>Araç ID</th>
+			<th>Durum</th>
+			<th>Mesafe (km)</th>
+			<th>Maliyet</th>
+			<th>Güzergah (İstasyon ID)</th>
 		</tr>
-	}
+	</thead>
+	<tbody>
+		@foreach (var v in Model.Vehicles)
+		{
+			<tr>
+				<td>@v.VehicleId</td>
+				<td>
+					@if (v.IsRented)
+					{
+						<span class="badge bg-warning text-dark">Kiralık</span>
+					}
+					else
+					{
+
+						<span class="badge bg-success">Mevcut</span>
+					}
+				</td>
+				<td>@v.TotalDistance.ToString("F2") km</td>
+				<td>@v.TotalCost.ToString("C2")</td>
+				<td>@string.Join(" -> ", v.StationRoute)</td>
+			</tr>
+		}
+	</tbody>
 </table>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<link rel="stylesheet" href="~/leaflet/leaflet.css" />
+
+<script src="~/leaflet/leaflet.js"></script>
+
+<script>
+	// C# Modelini JSON olarak JS değişkenine aktarıyoruz
+	var vehiclesData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Vehicles));
+</script>
+
 <script src="~/js/map.js"></script>

@@ -1,29 +1,38 @@
 using CargoSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-// Aşağıdaki using'leri eklemelisiniz:
-using CargoSystem.Application.Services;      // ICargoService için
-using CargoSystem.Infrastructure.Services;   // CargoService implementasyonu için
+using CargoSystem.Application.Services;
+using CargoSystem.Infrastructure.Services;
+using CargoSystem.Application.UseCases;
+using CargoSystem.Domain.Services;
+using CargoSystem.Infrastructure.Maps;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-// 1. Veritabanı Bağlantısı
-// Microsoft.EntityFrameworkCore.InMemory paketi yüklü olmalıdır.
+// 1. Veritabanı (InMemory)
 builder.Services.AddDbContext<CargoSystemDbContext>(options =>
 	options.UseInMemoryDatabase("CargoSystemDb"));
 
-// --- DÜZELTME: Servis kayıtları builder.Build() işleminden ÖNCE yapılmalıdır ---
+// 2. Temel Servisler (Dependency Injection Tanımları)
 builder.Services.AddScoped<ICargoService, CargoService>();
 
-// NOT: IShippingService ve ShippingService dosyalarınız mevcut değilse aşağıdaki satır hata verir.
-// Eğer henüz yazmadıysanız yorum satırı yapın:
-// builder.Services.AddScoped<IShippingService, ShippingService>();
+// 3. Domain Servisleri ve Algoritmalar
+// Dijkstra algoritması bir Graph nesnesine ihtiyaç duyar. Bunu Singleton olarak ekliyoruz.
+builder.Services.AddSingleton<CargoSystem.Domain.Graph.Graph>(sp =>
+	new KocaeliRoadGraphProvider().GetGraph());
 
-var app = builder.Build(); // Uygulama burada inşa edilir
+builder.Services.AddScoped<IShortestPathService, DijkstraPathService>();
+builder.Services.AddScoped<IRoutePlanner, GreedyRoutePlanner>(); // Greedy veya diğer algoritmanız
+builder.Services.AddScoped<IRouteCostCalculator, RouteCostCalculator>();
 
-// 2. Seed Data Çalıştırma
+// 4. Use Case'ler (Admin Controller'ın çalışması için gerekli)
+builder.Services.AddScoped<RunScenarioUseCase>();
+
+var app = builder.Build();
+
+// 5. Seed Data (Başlangıç Verileri)
 using (var scope = app.Services.CreateScope())
 {
 	var context = scope.ServiceProvider.GetRequiredService<CargoSystemDbContext>();

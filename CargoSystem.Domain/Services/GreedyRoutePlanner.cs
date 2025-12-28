@@ -79,7 +79,8 @@ namespace CargoSystem.Domain.Services
 				Id = id,
 				Type = Enums.VehicleType.Small,
 				RentalCost = 200,
-				IsRented = true
+				IsRented = true,
+				FuelCostPerKm = 1
 			};
 		}
 	}
