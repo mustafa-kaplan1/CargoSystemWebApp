@@ -55,7 +55,7 @@ namespace CargoSystem.Application.UseCases
 					IsRented = vehicle.IsRented,
 					TotalCost = route.TotalCost,
 					TotalDistance = route.TotalDistance,
-					StationRoute = route.Stations.Select(s => s.Id).ToList()
+					StationRoute = route.FullPathNodeIds
 				});
 
 				result.TotalSystemCost += route.TotalCost;

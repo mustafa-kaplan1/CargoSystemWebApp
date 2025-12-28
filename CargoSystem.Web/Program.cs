@@ -1,9 +1,10 @@
-using CargoSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using CargoSystem.Application.Services;
-using CargoSystem.Infrastructure.Services;
 using CargoSystem.Application.UseCases;
 using CargoSystem.Domain.Services;
+using CargoSystem.Domain.Configuration;
+using CargoSystem.Infrastructure.Data;
+using CargoSystem.Infrastructure.Services;
 using CargoSystem.Infrastructure.Maps;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,6 +24,7 @@ builder.Services.AddScoped<ICargoService, CargoService>();
 builder.Services.AddSingleton<CargoSystem.Domain.Graph.Graph>(sp =>
 	new KocaeliRoadGraphProvider().GetGraph());
 
+builder.Services.Configure<CargoSettings>(builder.Configuration.GetSection("CargoSettings"));
 builder.Services.AddScoped<IShortestPathService, DijkstraPathService>();
 builder.Services.AddScoped<IRoutePlanner, GreedyRoutePlanner>(); // Greedy veya diğer algoritmanız
 builder.Services.AddScoped<IRouteCostCalculator, RouteCostCalculator>();

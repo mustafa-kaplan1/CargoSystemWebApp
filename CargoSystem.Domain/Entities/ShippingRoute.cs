@@ -6,6 +6,7 @@ namespace CargoSystem.Domain.Entities
 		public int Id { get; set; }
 		public int VehicleId { get; set; }
 		public List<Station> Stations { get; set; } = new();
+		public List<int> FullPathNodeIds { get; set; } = new();
 		public double TotalDistance { get; set; }
 		public double TotalCost { get; set; }
 

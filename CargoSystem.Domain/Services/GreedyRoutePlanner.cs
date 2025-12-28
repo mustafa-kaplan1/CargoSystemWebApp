@@ -1,15 +1,22 @@
+using CargoSystem.Domain.Configuration; // YENİ EKLENEN (Settings yerine Configuration)
 using CargoSystem.Domain.Entities;
 using CargoSystem.Domain.Services;
+using Microsoft.Extensions.Options; // Options pattern için gerekli
 
 namespace CargoSystem.Domain.Services
 {
 	public class GreedyRoutePlanner : IRoutePlanner
 	{
 		private readonly IShortestPathService _pathService;
+		private readonly CargoSettings _settings; // Ayarları tutacak değişken
 
-		public GreedyRoutePlanner(IShortestPathService pathService)
+		// Constructor'a IOptions<CargoSettings> ekliyoruz
+		public GreedyRoutePlanner(
+			IShortestPathService pathService,
+			IOptions<CargoSettings> settings)
 		{
 			_pathService = pathService;
+			_settings = settings.Value; // Ayarları içeri alıyoruz
 		}
 
 		public List<ShippingRoute> PlanRoutes(
@@ -22,11 +29,11 @@ namespace CargoSystem.Domain.Services
 			var routes = vehicles.Select(v => new ShippingRoute
 			{
 				VehicleId = v.Id,
-				Stations = new List<Station>()
+				Stations = new List<Station>(),
+				FullPathNodeIds = new List<int>()
 			}).ToList();
 
-			// 2. Dağıtılacak istasyonları belirle (Sadece yükü olanlar)
-			// Strateji: Depoya en uzak olanlardan başlamak genellikle daha iyi 'backbone' oluşturur.
+			// 2. Dağıtılacak istasyonları belirle
 			var targetStations = stations
 				.Where(s => s.TotalCargoWeight > 0)
 				.OrderByDescending(s => _pathService.FindShortestPath(depotStationId, s.Id).TotalDistance)
@@ -38,67 +45,76 @@ namespace CargoSystem.Domain.Services
 				double minCostIncrease = double.MaxValue;
 
 				// A) MEVCUT ARAÇLARI KONTROL ET
-				// Bu kargoyu mevcut araçlardan birine eklemenin maliyeti nedir?
 				foreach (var route in routes)
 				{
 					var vehicle = vehicles.First(v => v.Id == route.VehicleId);
 
 					if (vehicle.CanLoad(station.TotalCargoWeight))
 					{
-						// İstasyon eklendiğinde oluşacak tahmini maliyet artışı (Distance artışı)
-						// Basit yaklaşım: Mevcut rotanın sonuna ekle.
-						// Maliyet Artışı = (SonDurak -> YeniDurak)
-
 						int lastStationId = route.Stations.Any() ? route.Stations.Last().Id : depotStationId;
 						double distanceIncrease = _pathService.FindShortestPath(lastStationId, station.Id).TotalDistance;
 
-						// Not: Yakıt maliyeti 1 birim olduğu için Distance = Cost kabul edebiliriz.
-						if (distanceIncrease < minCostIncrease)
+						// Mesafe * KmBaşıMaliyet (Config'den geliyor)
+						double costIncrease = distanceIncrease * _settings.CostPerKm;
+
+						if (costIncrease < minCostIncrease)
 						{
-							minCostIncrease = distanceIncrease;
+							minCostIncrease = costIncrease;
 							bestRoute = route;
 						}
 					}
 				}
 
-				// B) KİRALAMA SEÇENEĞİNİ DEĞERLENDİR (Sınırsız Araç Modu)
+				// B) KİRALAMA SEÇENEĞİNİ DEĞERLENDİR
 				bool rented = false;
 				if (allowRental)
 				{
-					// Yeni araç kiralamanın maliyeti: 
-					// Kiralama Ücreti (200) + Depo->İstasyon Yakıtı
 					double distanceRun = _pathService.FindShortestPath(depotStationId, station.Id).TotalDistance;
-					double rentalTotalCost = 200 + distanceRun; // FuelCostPerKm = 1
 
-					// Eğer yeni araç kiralamak, mevcut bir aracı oraya göndermekten daha ucuzsa (veya hiç yer yoksa)
+					// Config'den okunan değerler: (Kiralama Ücreti) + (Mesafe * KmMaliyeti)
+					double rentalTotalCost = _settings.RentalCost + (distanceRun * _settings.CostPerKm);
+
 					if (rentalTotalCost < minCostIncrease)
 					{
 						// -- KİRALAMA YAP --
 						var newVehicle = CreateRentedVehicle(GetNextVehicleId(vehicles));
 
-						// Yükü yükle
 						if (newVehicle.CanLoad(station.TotalCargoWeight))
 						{
 							newVehicle.Load(station.TotalCargoWeight);
-							vehicles.Add(newVehicle); // Ana listeye ekle
+							vehicles.Add(newVehicle);
 
 							var newRoute = new ShippingRoute
 							{
 								VehicleId = newVehicle.Id,
-								Stations = new List<Station> { station }
+								Stations = new List<Station> { station },
+								FullPathNodeIds = new List<int>()
 							};
+
+							var pathResult = _pathService.FindShortestPath(depotStationId, station.Id);
+							newRoute.FullPathNodeIds.AddRange(pathResult.StationPath);
+
 							routes.Add(newRoute);
 							rented = true;
 						}
 					}
 				}
 
-				// C) ATAMA YAP (Eğer kiralama yapılmadıysa)
+				// C) ATAMA YAP
 				if (!rented && bestRoute != null)
 				{
 					var vehicle = vehicles.First(v => v.Id == bestRoute.VehicleId);
+					int lastStationId = bestRoute.Stations.Any() ? bestRoute.Stations.Last().Id : depotStationId;
+
+					var pathResult = _pathService.FindShortestPath(lastStationId, station.Id);
+
 					vehicle.Load(station.TotalCargoWeight);
 					bestRoute.Stations.Add(station);
+
+					if (bestRoute.FullPathNodeIds.Count == 0)
+						bestRoute.FullPathNodeIds.AddRange(pathResult.StationPath);
+					else
+						bestRoute.FullPathNodeIds.AddRange(pathResult.StationPath.Skip(1));
 				}
 			}
 
@@ -107,13 +123,15 @@ namespace CargoSystem.Domain.Services
 
 		private Vehicle CreateRentedVehicle(int id)
 		{
+			// Değerler artık Config'den geliyor
 			return new Vehicle
 			{
 				Id = id,
-				Type = Enums.VehicleType.Small, // Kiralık araçlar genelde 500kg (Small) varsayılır
-				RentalCost = 200,
+				Type = Enums.VehicleType.Small,
+				RentalCost = _settings.RentalCost,
 				IsRented = true,
-				FuelCostPerKm = 1
+				FuelCostPerKm = _settings.CostPerKm,
+				Capacity = _settings.RentalVehicleCapacity // Kapasiteyi de set ediyoruz
 			};
 		}
 
