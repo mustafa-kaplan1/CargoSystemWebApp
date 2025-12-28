@@ -15,6 +15,9 @@ namespace CargoSystem.Domain.Entities
 
 		public double CurrentLoad { get; private set; }
 
+		// YENİ EKLENEN: Kalan kapasiteyi kolayca hesaplamak için
+		public double RemainingCapacity => Capacity - CurrentLoad;
+
 		public double FuelCostPerKm { get; set; } = 1;
 		public double RentalCost { get; set; }
 

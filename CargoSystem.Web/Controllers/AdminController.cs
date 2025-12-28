@@ -3,15 +3,16 @@ using CargoSystem.Application.UseCases;
 using CargoSystem.Infrastructure.Data;
 using CargoSystem.Web.Models;
 using Microsoft.AspNetCore.Mvc;
-using CargoSystem.Application.Services; // ICargoService için
+using CargoSystem.Application.Services;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace CargoSystem.Web.Controllers
 {
 	public class AdminController : Controller
 	{
 		private readonly RunScenarioUseCase _useCase;
-		private readonly ICargoService _cargoService; // Eklendi
+		private readonly ICargoService _cargoService;
 
 		public AdminController(RunScenarioUseCase useCase, ICargoService cargoService)
 		{
@@ -21,13 +22,7 @@ namespace CargoSystem.Web.Controllers
 
 		public IActionResult Index()
 		{
-			// ESKİ: Statik dosyadan okuyordu
-			// var stations = KocaeliStationsData.GetStations();
-
-			// YENİ: Veritabanından (User ile aynı yerden) okuyor
 			var stations = _cargoService.GetStations();
-
-			// Veritabanındaki kayıtlı kargoları çekiyoruz
 			var savedCargos = _cargoService.GetCargos();
 
 			var vm = new ScenarioViewModel
@@ -36,7 +31,6 @@ namespace CargoSystem.Web.Controllers
 				{
 					StationId = s.Id,
 					StationName = s.Name,
-					// Kullanıcıların girdiği kargoları buraya yansıtıyoruz
 					CargoCount = savedCargos.Count(c => c.TargetStationId == s.Id),
 					TotalWeight = savedCargos.Where(c => c.TargetStationId == s.Id).Sum(c => c.Weight)
 				}).ToList()
@@ -60,17 +54,15 @@ namespace CargoSystem.Web.Controllers
 				}).ToList()
 			};
 
-			// Burada algoritma için yine veritabanındaki güncel istasyonları kullanıyoruz
 			var stations = _cargoService.GetStations();
 			var vehicles = DefaultVehicles();
 
 			var result = _useCase.Execute(request, stations, vehicles);
 
-			// ... (Geri kalan kodlar aynı) ...
-
 			var resultVm = new ScenarioResultViewModel
 			{
 				TotalCost = result.TotalSystemCost,
+				AllStations = stations, // EKLENEN SATIR: Tüm istasyonları view'a gönderiyoruz
 				Vehicles = result.Vehicles.Select(v => new VehicleResultVm
 				{
 					VehicleId = v.VehicleId,
@@ -81,7 +73,7 @@ namespace CargoSystem.Web.Controllers
 					RouteCoordinates = v.StationRoute.Select(routeStationId =>
 					{
 						var st = stations.FirstOrDefault(s => s.Id == routeStationId);
-						if (st == null) return null; // Hata koruması
+						if (st == null) return null;
 
 						return new CoordinateDto
 						{
@@ -96,7 +88,6 @@ namespace CargoSystem.Web.Controllers
 			return View("Result", resultVm);
 		}
 
-		// ... DefaultVehicles metodu aynı kalabilir ...
 		private List<Domain.Entities.Vehicle> DefaultVehicles()
 		{
 			return new()

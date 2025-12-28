@@ -1,22 +1,21 @@
-using CargoSystem.Domain.Configuration; // YENİ EKLENEN (Settings yerine Configuration)
+using CargoSystem.Domain.Configuration;
 using CargoSystem.Domain.Entities;
 using CargoSystem.Domain.Services;
-using Microsoft.Extensions.Options; // Options pattern için gerekli
+using Microsoft.Extensions.Options;
 
 namespace CargoSystem.Domain.Services
 {
 	public class GreedyRoutePlanner : IRoutePlanner
 	{
 		private readonly IShortestPathService _pathService;
-		private readonly CargoSettings _settings; // Ayarları tutacak değişken
+		private readonly CargoSettings _settings;
 
-		// Constructor'a IOptions<CargoSettings> ekliyoruz
 		public GreedyRoutePlanner(
 			IShortestPathService pathService,
 			IOptions<CargoSettings> settings)
 		{
 			_pathService = pathService;
-			_settings = settings.Value; // Ayarları içeri alıyoruz
+			_settings = settings.Value;
 		}
 
 		public List<ShippingRoute> PlanRoutes(
@@ -25,7 +24,7 @@ namespace CargoSystem.Domain.Services
 			int depotStationId,
 			bool allowRental)
 		{
-			// 1. Mevcut araçlar için boş rotaları oluştur
+			// 1. Mevcut (sabit) araçlar için rota nesnelerini oluştur
 			var routes = vehicles.Select(v => new ShippingRoute
 			{
 				VehicleId = v.Id,
@@ -33,97 +32,146 @@ namespace CargoSystem.Domain.Services
 				FullPathNodeIds = new List<int>()
 			}).ToList();
 
-			// 2. Dağıtılacak istasyonları belirle
-			var targetStations = stations
+			// 2. İstasyonları kalan yüke göre takip etmek için bir sözlük oluştur
+			var stationDemands = stations
+				.Where(s => s.TotalCargoWeight > 0)
+				.ToDictionary(s => s.Id, s => s.TotalCargoWeight);
+
+			// 3. İstasyonları merkeze uzaklığına göre sırala (Uzak olan öncelikli)
+			var targetStationIds = stations
 				.Where(s => s.TotalCargoWeight > 0)
 				.OrderByDescending(s => _pathService.FindShortestPath(depotStationId, s.Id).TotalDistance)
+				.Select(s => s.Id)
 				.ToList();
 
-			foreach (var station in targetStations)
+			foreach (var stationId in targetStationIds)
 			{
-				ShippingRoute bestRoute = null;
-				double minCostIncrease = double.MaxValue;
+				var originalStation = stations.First(s => s.Id == stationId);
 
-				// A) MEVCUT ARAÇLARI KONTROL ET
-				foreach (var route in routes)
+				// Bu istasyonun yükü bitene kadar dağıtım yap (Splitting)
+				while (stationDemands[stationId] > 0)
 				{
-					var vehicle = vehicles.First(v => v.Id == route.VehicleId);
+					double currentCargo = stationDemands[stationId];
+					ShippingRoute bestRoute = null;
+					double minMarginalCost = double.MaxValue;
 
-					if (vehicle.CanLoad(station.TotalCargoWeight))
+					// A) MEVCUT ROTALAR İÇİN MALİYET HESABI
+					foreach (var route in routes)
 					{
-						int lastStationId = route.Stations.Any() ? route.Stations.Last().Id : depotStationId;
-						double distanceIncrease = _pathService.FindShortestPath(lastStationId, station.Id).TotalDistance;
+						var vehicle = vehicles.First(v => v.Id == route.VehicleId);
 
-						// Mesafe * KmBaşıMaliyet (Config'den geliyor)
-						double costIncrease = distanceIncrease * _settings.CostPerKm;
+						// Eğer aracın hiç yeri yoksa pas geç
+						if (vehicle.RemainingCapacity <= 0) continue;
 
-						if (costIncrease < minCostIncrease)
+						int lastNodeId = route.Stations.Any() ? route.Stations.Last().Id : depotStationId;
+
+						// Maliyet Artışı Hesabı: (Son Durak -> Yeni Durak) + (Yeni Durak -> Depo) - (Son Durak -> Depo)
+
+						double distToNew = _pathService.FindShortestPath(lastNodeId, stationId).TotalDistance;
+						double distReturnNew = _pathService.FindShortestPath(stationId, depotStationId).TotalDistance;
+						double distReturnOld = _pathService.FindShortestPath(lastNodeId, depotStationId).TotalDistance;
+
+						double distanceIncrease = distToNew + distReturnNew - distReturnOld;
+						double costIncrease = distanceIncrease * vehicle.FuelCostPerKm;
+
+						if (costIncrease < minMarginalCost)
 						{
-							minCostIncrease = costIncrease;
+							minMarginalCost = costIncrease;
 							bestRoute = route;
 						}
 					}
-				}
 
-				// B) KİRALAMA SEÇENEĞİNİ DEĞERLENDİR
-				bool rented = false;
-				if (allowRental)
-				{
-					double distanceRun = _pathService.FindShortestPath(depotStationId, station.Id).TotalDistance;
+					// B) KİRALAMA SEÇENEĞİ (Yeni Rota Başlatma)
+					bool useRental = false;
+					// Kiralık araç maliyeti: Kiralama Ücreti + (Depo -> İstasyon -> Depo) * Yakıt
+					double rentalDistance = _pathService.FindShortestPath(depotStationId, stationId).TotalDistance * 2;
+					double rentalTotalCost = double.MaxValue;
 
-					// Config'den okunan değerler: (Kiralama Ücreti) + (Mesafe * KmMaliyeti)
-					double rentalTotalCost = _settings.RentalCost + (distanceRun * _settings.CostPerKm);
-
-					if (rentalTotalCost < minCostIncrease)
+					if (allowRental)
 					{
-						// -- KİRALAMA YAP --
-						var newVehicle = CreateRentedVehicle(GetNextVehicleId(vehicles));
-
-						if (newVehicle.CanLoad(station.TotalCargoWeight))
-						{
-							newVehicle.Load(station.TotalCargoWeight);
-							vehicles.Add(newVehicle);
-
-							var newRoute = new ShippingRoute
-							{
-								VehicleId = newVehicle.Id,
-								Stations = new List<Station> { station },
-								FullPathNodeIds = new List<int>()
-							};
-
-							var pathResult = _pathService.FindShortestPath(depotStationId, station.Id);
-							newRoute.FullPathNodeIds.AddRange(pathResult.StationPath);
-
-							routes.Add(newRoute);
-							rented = true;
-						}
+						rentalTotalCost = _settings.RentalCost + (rentalDistance * _settings.CostPerKm);
 					}
-				}
 
-				// C) ATAMA YAP
-				if (!rented && bestRoute != null)
-				{
-					var vehicle = vehicles.First(v => v.Id == bestRoute.VehicleId);
-					int lastStationId = bestRoute.Stations.Any() ? bestRoute.Stations.Last().Id : depotStationId;
+					// Karar Anı: Mevcut en iyi rotaya eklemek mi daha ucuz, yoksa yeni kiralamak mı?
+					if (allowRental && (bestRoute == null || rentalTotalCost < minMarginalCost))
+					{
+						useRental = true;
+					}
 
-					var pathResult = _pathService.FindShortestPath(lastStationId, station.Id);
+					// C) ATAMA İŞLEMİ
+					if (useRental)
+					{
+						// Yeni araç oluştur
+						var newVehicle = CreateRentedVehicle(GetNextVehicleId(vehicles));
+						vehicles.Add(newVehicle);
 
-					vehicle.Load(station.TotalCargoWeight);
-					bestRoute.Stations.Add(station);
+						// Yüklenecek miktar: Kargosunun tamamı VEYA aracın kapasitesi kadar
+						double amountToLoad = Math.Min(currentCargo, newVehicle.Capacity);
+						newVehicle.Load(amountToLoad);
+						stationDemands[stationId] -= amountToLoad;
 
-					if (bestRoute.FullPathNodeIds.Count == 0)
-						bestRoute.FullPathNodeIds.AddRange(pathResult.StationPath);
+						// Yeni rota oluştur
+						var newRoute = new ShippingRoute
+						{
+							VehicleId = newVehicle.Id,
+							Stations = new List<Station> { CreatePartialStation(originalStation, amountToLoad) },
+							FullPathNodeIds = new List<int>()
+						};
+
+						// Rotayı çiz: Depo -> İstasyon
+						var pathResult = _pathService.FindShortestPath(depotStationId, stationId);
+						newRoute.FullPathNodeIds.AddRange(pathResult.StationPath);
+
+						routes.Add(newRoute);
+					}
+					else if (bestRoute != null)
+					{
+						var vehicle = vehicles.First(v => v.Id == bestRoute.VehicleId);
+						int lastNodeId = bestRoute.Stations.Any() ? bestRoute.Stations.Last().Id : depotStationId;
+
+						// Yüklenecek miktar: Kalan kargo VEYA aracın KALAN kapasitesi
+						double amountToLoad = Math.Min(currentCargo, vehicle.RemainingCapacity);
+
+						vehicle.Load(amountToLoad);
+						stationDemands[stationId] -= amountToLoad;
+
+						// Rotayı güncelle
+						var pathResult = _pathService.FindShortestPath(lastNodeId, stationId);
+
+						bestRoute.Stations.Add(CreatePartialStation(originalStation, amountToLoad));
+
+						if (bestRoute.FullPathNodeIds.Count == 0)
+							bestRoute.FullPathNodeIds.AddRange(pathResult.StationPath);
+						else
+							// İlk node (önceki durak) zaten listede var, tekrar eklememek için Skip(1)
+							bestRoute.FullPathNodeIds.AddRange(pathResult.StationPath.Skip(1));
+					}
 					else
-						bestRoute.FullPathNodeIds.AddRange(pathResult.StationPath.Skip(1));
+					{
+						// Hiçbir araca sığmıyor ve kiralama kapalı. Döngüyü kır.
+						break;
+					}
 				}
 			}
 
 			return routes;
 		}
 
+		// DÜZELTİLEN KISIM BURASIDIR
+		private Station CreatePartialStation(Station original, double weight)
+		{
+			return new Station
+			{
+				Id = original.Id,
+				Name = original.Name,
+				Location = original.Location, // HATA ÇÖZÜMÜ: Latitude/Longitude yerine Location nesnesi atandı
+				CargoCount = original.CargoCount, // Adet bölünmediği varsayılıyor veya orantılanabilir
+				TotalCargoWeight = weight // Sadece bu seferde taşınan ağırlık
+			};
+		}
+
 		private Vehicle CreateRentedVehicle(int id)
 		{
-			// Değerler artık Config'den geliyor
 			return new Vehicle
 			{
 				Id = id,
@@ -131,7 +179,7 @@ namespace CargoSystem.Domain.Services
 				RentalCost = _settings.RentalCost,
 				IsRented = true,
 				FuelCostPerKm = _settings.CostPerKm,
-				Capacity = _settings.RentalVehicleCapacity // Kapasiteyi de set ediyoruz
+				Capacity = _settings.RentalVehicleCapacity
 			};
 		}
 
