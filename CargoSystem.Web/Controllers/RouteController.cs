@@ -12,13 +12,15 @@ namespace CargoSystem.Web.Controllers
 			var nodes = KocaeliRoadGraph.Nodes;
 			var edges = KocaeliRoadGraph.Edges;
 
-			var start = nodes.First(n => n.Name == from);
-			var end = nodes.First(n => n.Name == to);
+			var start = nodes.FirstOrDefault(n => n.Name == from);
+			var end = nodes.FirstOrDefault(n => n.Name == to);
+
+			if (start == null || end == null) return NotFound("Başlangıç veya bitiş noktası bulunamadı.");
 
 			var dijkstra = new DijkstraPathFinder();
 			var path = dijkstra.FindShortestPath(start, end, nodes, edges);
 
-			return Json(path.Select(p => new { p.Latitude, p.Longitude }));
+			return Json(path.Select(p => new { latitude = p.Latitude, longitude = p.Longitude }));
 		}
 	}
 }

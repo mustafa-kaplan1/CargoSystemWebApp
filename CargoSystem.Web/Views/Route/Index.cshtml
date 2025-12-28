@@ -9,16 +9,39 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-	const map = L.map('map').setView([40.7667, 29.9167], 10);
+	// Harita zaten tanımlıysa tekrar başlatma hatasını önle
+	var map = L.map('map').setView([40.7667, 29.9167], 10);
 
 	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-		maxZoom: 18
+		maxZoom: 18,
+		attribution: '© OpenStreetMap'
 	}).addTo(map);
 
+	console.log("Rota isteği gönderiliyor...");
+
 	fetch('/Route/GetRoute?from=İzmit&to=Gebze')
-		.then(r => r.json())
+		.then(r => {
+			if (!r.ok) {
+				throw new Error("Sunucu hatası: " + r.statusText);
+			}
+			return r.json();
+		})
 		.then(data => {
+			console.log("Gelen Veri:", data); // Tarayıcı konsolunda (F12) bu veriyi kontrol edin
+
+			if (!data || data.length === 0) {
+				alert("Rota bulunamadı veya veri boş!");
+				return;
+			}
+
+			// Gelen verinin latitude/longitude özelliklerini kontrol ederek mapliyoruz
 			const latlngs = data.map(p => [p.latitude, p.longitude]);
-			L.polyline(latlngs).addTo(map);
-		});
+
+			// Çizgi rengini belirginleştirelim (kırmızı)
+			var polyline = L.polyline(latlngs, { color: 'red', weight: 5 }).addTo(map);
+
+			// Haritayı rotaya odakla
+			map.fitBounds(polyline.getBounds());
+		})
+		.catch(err => console.error("Hata oluştu:", err));
 </script>
