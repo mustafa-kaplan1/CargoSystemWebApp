@@ -1,18 +1,50 @@
 ﻿@{
-    ViewData["Title"] = "Ana Sayfa";
+	ViewData["Title"] = "Ana Sayfa";
 }
 
-<div class="text-center mt-5">
-    <h1 class="display-4">Kargo Dağıtım Sistemine Hoşgeldiniz</h1>
-    <p class="lead">Lütfen yapmak istediğiniz işlemi seçiniz:</p>
-    
-    <div class="mt-4">
-        <a asp-controller="Cargo" asp-action="Create" class="btn btn-primary btn-lg mx-2">
-            Yeni Kargo Gönder
-        </a>
+<div class="px-4 py-5 my-5 text-center">
+	<div class="mb-4">
+		<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" fill="currentColor"
+			class="bi bi-box-seam text-primary" viewBox="0 0 16 16">
+			<path
+				d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5l2.404.961L10.404 2l-2.218-.887zm3.564 1.426L5.596 5 8 5.961 14.154 3.5l-2.404-.961zm3.25 1.7-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923l6.5 2.6zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464L7.443.184z" />
+		</svg>
+	</div>
 
-        <a asp-controller="Admin" asp-action="Index" class="btn btn-secondary btn-lg mx-2">
-            Admin Paneli (Senaryo)
-        </a>
-    </div>
+	<h1 class="display-5 fw-bold text-body-emphasis">Akıllı Kargo Dağıtım Sistemi</h1>
+	<div class="col-lg-6 mx-auto">
+		<p class="lead mb-4 text-muted">Kocaeli genelindeki kargo dağıtım operasyonlarınızı optimize edin, maliyetleri
+			düşürün ve en verimli rotaları saniyeler içinde oluşturun.</p>
+		<div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+			<a asp-controller="Cargo" asp-action="Create" class="btn btn-primary btn-lg px-4 gap-3 shadow-sm">
+				Yeni Kargo Girişi
+			</a>
+			<a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-lg px-4">
+				Yönetici Paneli
+			</a>
+		</div>
+	</div>
+</div>
+
+<div class="container mt-5">
+	<div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
+		<div class="col d-flex align-items-start">
+			<div>
+				<h4 class="fw-bold mb-0">Hızlı Planlama</h4>
+				<p>Gelişmiş algoritmalar ile anlık rota hesaplaması.</p>
+			</div>
+		</div>
+		<div class="col d-flex align-items-start">
+			<div>
+				<h4 class="fw-bold mb-0">Maliyet Analizi</h4>
+				<p>Araç ve yakıt maliyetlerini en aza indiren optimizasyon.</p>
+			</div>
+		</div>
+		<div class="col d-flex align-items-start">
+			<div>
+				<h4 class="fw-bold mb-0">Esnek Yönetim</h4>
+				<p>İhtiyaç anında kiralık araç desteği ve senaryo yönetimi.</p>
+			</div>
+		</div>
+	</div>
 </div>
