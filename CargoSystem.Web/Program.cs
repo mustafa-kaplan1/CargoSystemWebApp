@@ -1,27 +1,32 @@
 using CargoSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+// Aşağıdaki using'leri eklemelisiniz:
+using CargoSystem.Application.Services;      // ICargoService için
+using CargoSystem.Infrastructure.Services;   // CargoService implementasyonu için
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-// 1. Veritabanı Bağlantısı (LocalDB veya InMemory kullanabiliriz geliştirme için)
-// Entity Framework Core paketlerinin yüklü olması gerekir.
+// 1. Veritabanı Bağlantısı
+// Microsoft.EntityFrameworkCore.InMemory paketi yüklü olmalıdır.
 builder.Services.AddDbContext<CargoSystemDbContext>(options =>
-	options.UseInMemoryDatabase("CargoSystemDb")); // Hızlı test için InMemory, kalıcı olması için UseSqlServer
+	options.UseInMemoryDatabase("CargoSystemDb"));
 
-var app = builder.Build();
-
-
+// --- DÜZELTME: Servis kayıtları builder.Build() işleminden ÖNCE yapılmalıdır ---
 builder.Services.AddScoped<ICargoService, CargoService>();
-builder.Services.AddScoped<IShippingService, ShippingService>();
 
-// 2. Seed Data Çalıştırma (Uygulama her başladığında verileri kontrol et)
+// NOT: IShippingService ve ShippingService dosyalarınız mevcut değilse aşağıdaki satır hata verir.
+// Eğer henüz yazmadıysanız yorum satırı yapın:
+// builder.Services.AddScoped<IShippingService, ShippingService>();
+
+var app = builder.Build(); // Uygulama burada inşa edilir
+
+// 2. Seed Data Çalıştırma
 using (var scope = app.Services.CreateScope())
 {
 	var context = scope.ServiceProvider.GetRequiredService<CargoSystemDbContext>();
-	// InMemory kullanıyorsak her seferinde temiz başlar, bu yüzden seed hep çalışır.
 	DbSeeder.Seed(context);
 }
 

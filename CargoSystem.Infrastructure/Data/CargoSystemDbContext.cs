@@ -16,11 +16,15 @@ namespace CargoSystem.Infrastructure.Data
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
-			modelBuilder.Entity<Vehicle>()
-		.Property(v => v.RentalCost)
-		.HasColumnType("decimal(18,2)");
+			// Configure Location as an Owned Type (Value Object) of Station
+			modelBuilder.Entity<Station>()
+				.OwnsOne(s => s.Location);
 
-			// DÜZELTİLEN KISIM: CostPerKm -> FuelCostPerKm
+			modelBuilder.Entity<Vehicle>()
+				.Property(v => v.RentalCost)
+				.HasColumnType("decimal(18,2)");
+
+			// ... existing code ...
 			modelBuilder.Entity<Vehicle>()
 				.Property(v => v.FuelCostPerKm)
 				.HasColumnType("decimal(18,2)");
