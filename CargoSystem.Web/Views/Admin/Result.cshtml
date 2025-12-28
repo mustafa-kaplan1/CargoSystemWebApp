@@ -1,54 +1,163 @@
 @model ScenarioResultViewModel
 
-<h2>Senaryo Sonucu</h2>
+@{
+	ViewData["Title"] = "Senaryo Sonucu";
+}
 
-<div class="alert alert-info">
-	<h4>Toplam Sistem Maliyeti: @Model.TotalCost.ToString("C2")</h4>
+<div class="container mt-4">
+	<h2 class="mb-3">Senaryo Analiz Sonuçları</h2>
+
+	<div class="alert alert-primary d-flex justify-content-between align-items-center">
+		<div>
+			<h4 class="mb-0">Toplam Sistem Maliyeti: <strong>@Model.TotalCost.ToString("C2")</strong></h4>
+		</div>
+		<div>
+			<span class="badge bg-light text-dark fs-6">Toplam Araç: @Model.Vehicles.Count</span>
+			<span class="badge bg-light text-dark fs-6">Toplam Mesafe: @Model.Vehicles.Sum(v =>
+								v.TotalDistance).ToString("F2") km</span>
+		</div>
+	</div>
+
+	<div class="card mb-4 shadow-sm">
+		<div class="card-header bg-dark text-white">
+			<i class="bi bi-map"></i> Rota Haritası
+		</div>
+		<div class="card-body p-0">
+			<div id="map" style="height: 500px; width: 100%;"></div>
+		</div>
+	</div>
+
+	<div class="row mb-4">
+		<div class="col-md-6">
+			<div class="card shadow-sm h-100">
+				<div class="card-header bg-secondary text-white">
+					Araç Başına Maliyet Dağılımı
+				</div>
+				<div class="card-body">
+					<canvas id="costChart"></canvas>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-6">
+			<div class="card shadow-sm h-100">
+				<div class="card-header bg-secondary text-white">
+					Araç Başına Mesafe (km)
+				</div>
+				<div class="card-body">
+					<canvas id="distanceChart"></canvas>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="card shadow-sm">
+		<div class="card-header bg-dark text-white">
+			Sefer Detayları
+		</div>
+		<div class="card-body">
+			<table class="table table-hover table-bordered table-striped align-middle">
+				<thead class="table-light">
+					<tr>
+						<th>Araç ID</th>
+						<th>Durum</th>
+						<th>Mesafe</th>
+						<th>Maliyet</th>
+						<th>Güzergah</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var v in Model.Vehicles)
+					{
+						<tr>
+							<td class="fw-bold">Araç #@v.VehicleId</td>
+							<td>
+								@if (v.IsRented)
+								{
+									<span class="badge bg-warning text-dark">Kiralık Araç</span>
+								}
+								else
+								{
+									<span class="badge bg-success">Mevcut Filo</span>
+								}
+							</td>
+							<td>@v.TotalDistance.ToString("F2") km</td>
+							<td>@v.TotalCost.ToString("C2")</td>
+							<td class="small">
+								<i class="bi bi-arrow-right-circle"></i>
+								@string.Join(" ➝ ", v.StationRoute)
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
 </div>
 
-<div id="map" style="height: 600px; width: 100%; margin-bottom: 20px; border: 1px solid #ccc;"></div>
-
-<table class="table table-bordered table-striped">
-	<thead class="table-dark">
-		<tr>
-			<th>Araç ID</th>
-			<th>Durum</th>
-			<th>Mesafe (km)</th>
-			<th>Maliyet</th>
-			<th>Güzergah (İstasyon ID)</th>
-		</tr>
-	</thead>
-	<tbody>
-		@foreach (var v in Model.Vehicles)
-		{
-			<tr>
-				<td>@v.VehicleId</td>
-				<td>
-					@if (v.IsRented)
-					{
-						<span class="badge bg-warning text-dark">Kiralık</span>
-					}
-					else
-					{
-
-						<span class="badge bg-success">Mevcut</span>
-					}
-				</td>
-				<td>@v.TotalDistance.ToString("F2") km</td>
-				<td>@v.TotalCost.ToString("C2")</td>
-				<td>@string.Join(" -> ", v.StationRoute)</td>
-			</tr>
-		}
-	</tbody>
-</table>
-
 <link rel="stylesheet" href="~/leaflet/leaflet.css" />
-
 <script src="~/leaflet/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-	// C# Modelini JSON olarak JS değişkenine aktarıyoruz
+	// 1. VERİ HAZIRLIĞI
 	var vehiclesData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Vehicles));
+
+	// Grafik Etiketleri (Araç ID'leri)
+	var labels = vehiclesData.map(v => "Araç " + v.VehicleId + (v.IsRented ? " (Kiralık)" : ""));
+
+	// Veri Setleri
+	var costData = vehiclesData.map(v => v.TotalCost);
+	var distanceData = vehiclesData.map(v => v.TotalDistance);
+
+	// Renk Paleti (Dinamik)
+	var bgColors = vehiclesData.map(v => v.IsRented ? 'rgba(255, 193, 7, 0.6)' : 'rgba(75, 192, 192, 0.6)');
+	var borderColors = vehiclesData.map(v => v.IsRented ? 'rgba(255, 193, 7, 1)' : 'rgba(75, 192, 192, 1)');
+
+	// 2. MALİYET GRAFİĞİ
+	const ctxCost = document.getElementById('costChart').getContext('2d');
+	new Chart(ctxCost, {
+		type: 'bar',
+		data: {
+			labels: labels,
+			datasets: [{
+				label: 'Toplam Maliyet (TL)',
+				data: costData,
+				backgroundColor: bgColors,
+				borderColor: borderColors,
+				borderWidth: 1
+			}]
+		},
+		options: {
+			responsive: true,
+			scales: {
+				y: { beginAtZero: true }
+			}
+		}
+	});
+
+	// 3. MESAFE GRAFİĞİ
+	const ctxDist = document.getElementById('distanceChart').getContext('2d');
+	new Chart(ctxDist, {
+		type: 'line', // Farklılık olsun diye Line Chart
+		data: {
+			labels: labels,
+			datasets: [{
+				label: 'Kat Edilen Mesafe (km)',
+				data: distanceData,
+				fill: true,
+				backgroundColor: 'rgba(54, 162, 235, 0.2)',
+				borderColor: 'rgba(54, 162, 235, 1)',
+				tension: 0.1
+			}]
+		},
+		options: {
+			responsive: true,
+			scales: {
+				y: { beginAtZero: true }
+			}
+		}
+	});
+
 </script>
 
 <script src="~/js/map.js"></script>
