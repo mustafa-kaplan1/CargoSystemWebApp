@@ -24,6 +24,11 @@ namespace CargoSystem.Infrastructure.Services
 			_context.SaveChanges();
 		}
 
+		public List<Cargo> GetCargos()
+		{
+			return _context.Cargos.ToList();
+		}
+
 		public List<Station> GetStations()
 		{
 			return _context.Stations.OrderBy(s => s.Name).ToList();

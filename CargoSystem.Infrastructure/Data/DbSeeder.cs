@@ -1,7 +1,8 @@
 using System.Linq;
 using CargoSystem.Domain.Entities;
-using CargoSystem.Domain.ValueObjects; // Location için gerekli
-using CargoSystem.Domain.Enums;        // VehicleType için gerekli
+using CargoSystem.Domain.ValueObjects;
+using CargoSystem.Domain.Enums;
+using Microsoft.EntityFrameworkCore; // Identity Insert için gerekebilir ama şimdilik sırayla ekleyelim
 
 namespace CargoSystem.Infrastructure.Data
 {
@@ -9,63 +10,49 @@ namespace CargoSystem.Infrastructure.Data
 	{
 		public static void Seed(CargoSystemDbContext context)
 		{
-			// context.Database.EnsureCreated(); 
-
-			// 1. İSTASYONLAR (Konum nesnesi kullanılarak güncellendi)
+			// Eğer veritabanı boşsa doldur
 			if (!context.Stations.Any())
 			{
+				// ÖNEMLİ: KocaeliRoadGraph ve KocaeliStationsData'daki ID sırasına göre ekliyoruz.
+				// Böylece İzmit ID=1, Gebze ID=2 olacak.
 				var stations = new Station[]
 				{
-					new Station { Name = "Başiskele", Location = new Location(40.715, 29.928) },
-					new Station { Name = "Çayırova", Location = new Location(40.816, 29.373) },
-					new Station { Name = "Darıca", Location = new Location(40.773, 29.400) },
-					new Station { Name = "Derince", Location = new Location(40.755, 29.830) },
-					new Station { Name = "Dilovası", Location = new Location(40.787, 29.544) },
-					new Station { Name = "Gebze", Location = new Location(40.802, 29.430) },
-					new Station { Name = "Gölcük", Location = new Location(40.717, 29.821) },
-					new Station { Name = "Kandıra", Location = new Location(41.070, 30.150) },
-					new Station { Name = "Karamürsel", Location = new Location(40.692, 29.615) },
-					new Station { Name = "Kartepe", Location = new Location(40.753, 30.025) },
-					new Station { Name = "Körfez", Location = new Location(40.760, 29.740) },
-					new Station { Name = "İzmit", Location = new Location(40.765, 29.940) }
+					new Station { Name = "İzmit",       Location = new Location(40.7650, 29.9400) }, // ID 1 Olmalı
+					new Station { Name = "Gebze",       Location = new Location(40.8028, 29.4307) }, // ID 2
+					new Station { Name = "Darıca",      Location = new Location(40.7611, 29.3846) }, // ID 3
+					new Station { Name = "Çayırova",    Location = new Location(40.8242, 29.3722) }, // ID 4
+					new Station { Name = "Gölcük",      Location = new Location(40.7127, 29.8194) }, // ID 5 (Dikkat: Graph dosyanızda Gölcük 5 ise buraya aldım)
+					new Station { Name = "Körfez",      Location = new Location(40.7767, 29.7372) }, // ID 6
+					new Station { Name = "Derince",     Location = new Location(40.7550, 29.8317) }, // ID 7
+					new Station { Name = "Kartepe",     Location = new Location(40.7478, 30.0233) }, // ID 8
+					new Station { Name = "Başiskele",   Location = new Location(40.7144, 29.9403) }, // ID 9
+                    // Eğer 5 numara Dilovası ise sıralamayı ona göre düzeltin, graph dosyanıza bakın!
+                    // Aşağıdakiler kalanlar:
+					new Station { Name = "Dilovası",    Location = new Location(40.7856, 29.5444) },
+					new Station { Name = "Karamürsel",  Location = new Location(40.6900, 29.6167) },
+					new Station { Name = "Kandıra",     Location = new Location(41.0700, 30.1500) }
 				};
 
+				// NOT: Graph dosyanızdaki ID'ler ile buradaki ekleme sırası BİREBİR AYNI olmalıdır.
+				// Eğer KocaeliRoadGraph.cs dosyanızda ID 5 = Dilovası ise, yukarıdaki listede 5. sıraya Dilovası'nı koyun.
+
 				context.Stations.AddRange(stations);
+				context.SaveChanges();
 			}
 
-			// 2. ARAÇLAR (VehicleType kullanılarak güncellendi)
-			// Not: Vehicle sınıfında PlateNumber yok, Type var.
-			// Capacity özelliği Type'tan geliyor (double cast edilerek).
+			// Araçları ekle
 			if (!context.Vehicles.Any())
 			{
 				var vehicles = new Vehicle[]
 				{
-					new Vehicle
-					{ 
-                        // Enum değerlerinizi kontrol edin. Örn: Small=500, Medium=750 varsayılmıştır.
-                        // Eğer Enum'da isimler farklıysa lütfen düzeltin.
-                        Type = (VehicleType)500,
-						IsRented = false,
-						RentalCost = 0
-					},
-					new Vehicle
-					{
-						Type = (VehicleType)750,
-						IsRented = false,
-						RentalCost = 0
-					},
-					new Vehicle
-					{
-						Type = (VehicleType)1000,
-						IsRented = false,
-						RentalCost = 0
-					}
+					new Vehicle { Type = (VehicleType)500, IsRented = false, RentalCost = 0 },
+					new Vehicle { Type = (VehicleType)750, IsRented = false, RentalCost = 0 },
+					new Vehicle { Type = (VehicleType)1000, IsRented = false, RentalCost = 0 }
 				};
 
 				context.Vehicles.AddRange(vehicles);
+				context.SaveChanges();
 			}
-
-			context.SaveChanges();
 		}
 	}
 }
